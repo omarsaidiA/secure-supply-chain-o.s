@@ -1,0 +1,26 @@
+version: 2
+
+# Cooldown: wait a week before proposing a fresh release (a compromised version is more likely
+# to be pulled first). No auto-merge: every update goes through the pipeline and a review.
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  # Base images are pinned by digest: Dependabot proposes the new digest
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
