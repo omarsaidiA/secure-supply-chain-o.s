@@ -12,19 +12,24 @@ identity="https://github.com/${repo}/.github/workflows/supply-chain.yml@refs/hea
 issuer="https://token.actions.githubusercontent.com"
 failures=0
 
+fail() {
+  echo "  FAIL  $*"
+  # In GitHub Actions, also raise an annotation so the failure shows up on the run summary
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::error title=Negative test failed::$*"; fi
+  failures=$((failures + 1))
+}
+
 # expect_rejected DESCRIPTION EXPECTED_REASON cosign-verify-arguments...
 # The reason is checked too: a network error would also "fail" without proving anything.
 expect_rejected() {
   local description=$1 reason=$2 out
   shift 2
   if out=$(cosign verify "$@" 2>&1); then
-    echo "  FAIL  $description: verification unexpectedly succeeded"
-    failures=$((failures + 1))
+    fail "$description: verification unexpectedly succeeded"
   elif grep -qF -- "$reason" <<<"$out"; then
     echo "  PASS  $description: rejected ($reason)"
   else
-    echo "  FAIL  $description: rejected for another reason: $(tail -n 1 <<<"$out")"
-    failures=$((failures + 1))
+    fail "$description: rejected for another reason: $(tail -n 1 <<<"$out")"
   fi
 }
 wrong_signer="none of the expected identities matched"
@@ -46,8 +51,7 @@ if cosign verify "$base" --certificate-identity keyless@distroless.iam.gservicea
   --certificate-oidc-issuer https://accounts.google.com >/dev/null 2>&1; then
   echo "  PASS  the base image's own signature (Google) is valid"
 else
-  echo "  FAIL  could not verify the base image with Google's identity"
-  failures=$((failures + 1))
+  fail "could not verify the base image with Google's identity"
 fi
 expect_rejected "base image checked against this project's identity" "$wrong_signer" "$base" \
   --certificate-identity "$identity" --certificate-oidc-issuer "$issuer"
