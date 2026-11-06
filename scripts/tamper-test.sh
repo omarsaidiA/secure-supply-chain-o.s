@@ -19,20 +19,21 @@ fail() {
   failures=$((failures + 1))
 }
 
-# expect_rejected DESCRIPTION EXPECTED_REASON cosign-verify-arguments...
+# expect_rejected DESCRIPTION EXPECTED_REASON_REGEX cosign-verify-arguments...
 # The reason is checked too: a network error would also "fail" without proving anything.
 expect_rejected() {
   local description=$1 reason=$2 out
   shift 2
   if out=$(cosign verify "$@" 2>&1); then
     fail "$description: verification unexpectedly succeeded"
-  elif grep -qF -- "$reason" <<<"$out"; then
-    echo "  PASS  $description: rejected ($reason)"
+  elif grep -qE -- "$reason" <<<"$out"; then
+    echo "  PASS  $description: rejected ($(grep -oE -- "$reason" <<<"$out" | head -n 1))"
   else
     fail "$description: rejected for another reason: $(tail -n 1 <<<"$out")"
   fi
 }
-wrong_signer="none of the expected identities matched"
+# cosign words it differently for legacy signatures and for the newer Sigstore bundle format
+wrong_signer="none of the expected identities matched|no matching CertificateIdentity found"
 unsigned="no signatures found"
 
 echo "1. Right image, wrong expected signer"
